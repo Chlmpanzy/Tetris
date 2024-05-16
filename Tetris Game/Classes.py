@@ -138,10 +138,10 @@ class Obstacles(Cluster):
         fullRows = []
         rows = []
         for block in self.blocks:                       
-            rows.append(block.row)    # make a list with only the row numbers of all blocks
+           rows.append(block.row)    # make a list with only the row numbers of all blocks
             
         for row in range(top, lastRow):                  # starting from the top (row 0), and down to the bottom
-            if rows.count(row+1) >= columns:            # if the number of blocks with certain row number
+            if rows.count(row) >= columns:            # if the number of blocks with certain row number
                 fullRows.append(row)                      # equals to the number of columns -> the row is full
         return fullRows                                         # return a list with the full rows' numbers
 

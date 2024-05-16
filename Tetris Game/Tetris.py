@@ -4,7 +4,7 @@
 # File Name: tetrisTemplate3.py
 # Description: This program is the third game template for our Tetris game.
 #########################################
-from tetrisClasses3 import *
+from Classes import *
 from random import randint
 import pygame
 pygame.init()
@@ -24,7 +24,7 @@ MIDDLE = LEFT + COLUMNS//2  #
 TOP = 1                                        #
 FLOOR = TOP + ROWS             #
 shapeNo = randint(1,7)      
-tetra = [Shape(MIDDLE-1,2,shapeNo)]
+tetra = Shape(MIDDLE-1,2,shapeNo)
 nextShapeNo = randint(1,7)
 nextShape = Shape(LEFT-6, 3, nextShapeNo)
 floor = Floor(LEFT,FLOOR,COLUMNS)
@@ -51,8 +51,9 @@ def drawGrid():
 '''
 def redrawScreen():               
     screen.fill(BLACK)
-    for tetras in tetra:
-        tetras.draw(screen, GRIDSIZE)
+    tetra.draw(screen, GRIDSIZE)
+    for ob in obst.blocks:
+        ob.draw(screen, GRIDSIZE)
     floor.draw(screen, GRIDSIZE)
     leftWall.draw(screen, GRIDSIZE)
     rightWall.draw(screen, GRIDSIZE)
@@ -82,20 +83,20 @@ while inPlay:
 # 7.  Modify the code below, so it calls rotateClkwise() method and it doesn't access _rot private variable
 #     and the rotation method. Use the code below in the class template to write the new rotation methods
 #####################################################################################################                     
-                tetra[-1].rotateClkwise()
-                if tetra[-1].collides(leftWall) or tetra[-1].collides(rightWall) or tetra[-1].collides(bottom):
-                    tetra[-1].rotateCntclkwise()
+                tetra.rotateClkwise()
+                if tetra.collides(leftWall) or tetra.collides(rightWall) or tetra.collides(bottom):
+                    tetra.rotateCntclkwise()
 #####################################################################################################
 # 8.  Modify the code so it uses rotateCntclkwise() method when collision is detected during rotation
 #####################################################################################################
             if event.key == pygame.K_LEFT:
-                tetra[-1].moveLeft()
-                if tetra[-1].collides(leftWall) or tetra[-1].collides(obst):
-                    tetra[-1].moveRight()
+                tetra.moveLeft()
+                if tetra.collides(leftWall) or tetra.collides(obst):
+                    tetra.moveRight()
             if event.key == pygame.K_RIGHT:
-                tetra[-1].moveRight()
-                if tetra[-1].collides(rightWall) or tetra[-1].collides(obst):
-                    tetra[-1].moveLeft()
+                tetra.moveRight()
+                if tetra.collides(rightWall) or tetra.collides(obst):
+                    tetra.moveLeft()
             if event.key == pygame.K_SPACE:
                 pass
 ####################################################################################################
@@ -108,12 +109,12 @@ while inPlay:
 #     HINT: If the tetra moves very fast you can consider adding a timer: (if timer%5==0) use the clock command
 ####################################################################################################
             if event.key == pygame.K_DOWN:
-                tetra[-1].moveDown()
-                if tetra[-1].collides(bottom) or tetra[-1].collides(obst):
-                    tetra[-1].moveUp()
-                    obst.append(tetra[-1])
+                tetra.moveDown()
+                if tetra.collides(bottom) or tetra.collides(obst):
+                    tetra.moveUp()
+                    obst.append(tetra)
                     obst.show()
-                    tetra.append(Shape(MIDDLE-1,2,nextShapeNo))
+                    tetra = Shape(MIDDLE-1,2,nextShapeNo)
                     nextShapeNo = randint(1,7)
                     nextShape = Shape(LEFT-6, 3, nextShapeNo)
                     
