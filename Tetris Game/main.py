@@ -1,1 +1,1 @@
-import tetrisTemplate1
+import Tetris.py

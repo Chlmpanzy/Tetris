@@ -18,6 +18,13 @@ WHITE        = (255,255,255)
 COLOURS  = [ BLACK,  RED,  GREEN,  BLUE,  ORANGE,  CYAN,  MAGENTA,  YELLOW,  WHITE ]
 CLRNames = ['black','red','green','blue','orange','cyan','magenta','yellow','white']
 figures        = [  None , 'Z' ,  'S'  ,  'J' ,  'L'   ,  'I' ,   'T'   ,   'O'  , None  ]
+COLUMNS = 10                            
+ROWS = 22                            
+LEFT = 9                                
+TOP = 1                                 
+MIDDLE = LEFT + COLUMNS//2               
+RIGHT = LEFT + COLUMNS                  
+BOTTOM = TOP + ROWS   
 
 class Block(object):                    
     """ A square - basic building block
@@ -41,6 +48,11 @@ class Block(object):
         pygame.draw.rect(surface,CLR,(x,y,gridsize,gridsize), 0)
         pygame.draw.rect(surface, WHITE,(x,y,gridsize+1,gridsize+1), 1)
 
+    def __eq__(self, other):
+        if self.col == other.col and self.row == other.row:
+            return True
+        return False
+    
     def moveUp(self):                  
         self.row = self.row - 1
         
@@ -75,7 +87,7 @@ class Cluster(object):
 # 1B. Make the update method private and make sure all the calls are changed as well.  
 ##############################################################################################
 
-    def update(self):
+    def _update(self):
         for i in range(len(self.blocks)):
             blockCOL = self.col+self._colOffsets[i] 
             blockROW = self.row+self._rowOffsets[i] 
@@ -90,12 +102,14 @@ class Cluster(object):
         """ Compare each block from a cluster to all blocks from another cluster.
             Return True only if there is a location conflict.
         """
-        for block in self.blocks:
-            for obstacle in other.blocks:
 ############################################################################################
 # 2. Complete the collides method that checks if one shape is colliding with the other.   
 ############################################################################################  
-                pass
+        for i in self.blocks:
+            for j in other.blocks:
+                if i == j:
+                    return True
+        return False
             
     def append(self, other): 
         """ Append all blocks from another cluster to this one.
@@ -104,8 +118,9 @@ class Cluster(object):
 # 9.  Add code here that appends the blocks of the other object to the self.blocks list.
 #     Use a for loop to take each individual block from the other.blocks list 
 ###########################################################################################
-        pass
-
+        for i in other.blocks:
+            self.blocks.append(i)
+            
 #---------------------------------------#
 class Obstacles(Cluster):
     """ Collection of tetrominoe blocks on the playing field, left from previous shapes.
@@ -119,24 +134,25 @@ class Obstacles(Cluster):
         for block in self.blocks:
             print (block)
 
-    def findFullRows(self, top, bottom, columns):
+    def findFullRows(self, top, lastRow, columns):
         fullRows = []
         rows = []
         for block in self.blocks:                       
-            rows.append(block.row)                      # make a list with only the row numbers of all blocks
+            rows.append(block.row)    # make a list with only the row numbers of all blocks
             
-        for row in range(top, bottom):                  # starting from the top (row 0), and down to the bottom
-            if rows.count(row) == columns:            # if the number of blocks with certain row number
+        for row in range(top, lastRow):                  # starting from the top (row 0), and down to the bottom
+            if rows.count(row+1) >= columns:            # if the number of blocks with certain row number
                 fullRows.append(row)                      # equals to the number of columns -> the row is full
         return fullRows                                         # return a list with the full rows' numbers
 
 
     def removeFullRows(self, fullRows):
+        
         for row in fullRows:                                 # for each full row, STARTING FROM THE TOP (fullRows are in order)
             for i in reversed(range(len(self.blocks))): # check all obstacle blocks in REVERSE ORDER,
                                                                        # so when popping them the index doesn't go out of range !!!
                 if self.blocks[i].row == row:
-                    self.blocks.pop(i)                       # remove each block that is on this row
+                    self.blocks.pop(i) # remove each block that is on this row
                 elif self.blocks[i].row < row:
                     self.blocks[i].moveDown()         # move down each block that is above this row
    
@@ -160,7 +176,7 @@ class Shape(Cluster):
         self._rotate() 
         
     def __str__(self):                  
-        return figures[self.clr]+' ('+str(self.col)+','+str(self.row)+') '+CLR_names[self.clr]
+        return figures[self.clr]+' ('+str(self.col)+','+str(self.row)+') '+CLRNames[self.clr]
 
 
     def _rotate(self):
@@ -187,8 +203,8 @@ class Shape(Cluster):
                              # o o                o             o              
                              #   x            o x o             x           o x o
                              #   o                              o o         o
-            _colOffsets = [[-1, 1, 1,-1], [-1, 1, 1,-1], [-1, 1, 1,-1], [-1, 1, 1,-1]] 
-            _rowOffsets = [[-1,-1, 1, 1], [-1,-1, 1, 1], [-1,-1, 1, 1], [-1,-1, 1, 1]] 
+            _colOffsets = [[-1, 0, 0, 0], [-1, 1, 0,1], [0, 0, 0,1], [-1, -1, 0,1]]
+            _rowOffsets = [[-1,-1, 0, 1], [0, 0, 0, -1], [-1,1, 0, 1], [1,0, 0, 0]]
         elif self.clr == 5:  #   o                              o
                              #   o                              x              
                              #   x            o x o o           o          o o x o
@@ -209,32 +225,34 @@ class Shape(Cluster):
             _rowOffsets = [[ 0,-1, 0,-1], [ 0,-1, 0,-1], [ 0,-1, 0,-1], [ 0,-1, 0,-1]] 
         self._colOffsets = _colOffsets[self._rot] 
         self._rowOffsets = _rowOffsets[self._rot] 
-        self.update() 
+        self._update() 
 
     def moveLeft(self):                
         self.col = self.col - 1                   
-        self.update() 
+        self._update() 
         
     def moveRight(self):               
         self.col = self.col + 1                   
-        self.update() 
+        self._update() 
         
     def moveDown(self):                
         self.row = self.row + 1                   
-        self.update() 
+        self._update() 
         
     def moveUp(self):                  
         self.row = self.row - 1                   
-        self.update() 
+        self._update() 
 
     def rotateClkwise(self):
-        pass
+        self._rot = (self._rot + 1)%4     
+        self._rotate()
 #############################################################################################################
 # 5.  Add code here that rotates the shape one step clockwise. Use the rotation section from the previous template
 #############################################################################################################
 
     def rotateCntclkwise(self):
-        pass
+        self._rot = (self._rot - 1)%4     
+        self._rotate()
 #############################################################################################################
 # 6.  Add code here that rotates the shape one step counterclockwise. Use the rotation section from the previous template
 #############################################################################################################
@@ -248,11 +266,11 @@ class Floor(Cluster):
             row - row where the anchor block is located
             blocksNo - number of blocks 
     """
-    def __init__(self, col = 1, row = 1, blocksNo = 1):
+    def __init__(self, col = 1, row = 1, blocksNo = 1): 
         Cluster.__init__(self, col, row, blocksNo)
         for i in range(blocksNo):
-            self._colOffsets[i] = i  
-        self.update()         
+            self._colOffsets[i] = i
+        self._update() 
             
 #---------------------------------------#
 class Wall(Cluster):
@@ -266,4 +284,9 @@ class Wall(Cluster):
         Cluster.__init__(self, col, row, blocksNo)
         for i in range(blocksNo):
             self._rowOffsets[i] = i 
-        self.update() 
+        self._update() 
+
+bottom = Floor(LEFT,BOTTOM,COLUMNS)
+lastRow = Floor(LEFT,BOTTOM+1,COLUMNS)
+leftWall = Wall(LEFT-1, TOP, ROWS)
+rightWall = Wall(RIGHT, TOP, ROWS)
