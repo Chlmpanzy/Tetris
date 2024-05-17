@@ -1,14 +1,8 @@
-#########################################
-# Programmer: Mrs.G
-# Date: 07/05/2024
-# File Name: tetrisTemplate3.py
-# Description: This program is the third game template for our Tetris game.
-#########################################
 from Classes import *
 from random import randint
 import pygame
 pygame.init()
-
+clock = pygame.time.Clock()
 HEIGHT = 600
 WIDTH  = 600
 GRIDSIZE = HEIGHT//24
@@ -25,13 +19,21 @@ TOP = 1                                        #
 FLOOR = TOP + ROWS             #
 shapeNo = randint(1,7)      
 tetra = Shape(MIDDLE-1,2,shapeNo)
+shadow = Shape(MIDDLE-1,2, shapeNo)
 nextShapeNo = randint(1,7)
 nextShape = Shape(LEFT-6, 3, nextShapeNo)
+oldShape = shapeNo
+holdShapeNo = 0
+holdShape = Shape(LEFT-6, 12, holdShapeNo)
 floor = Floor(LEFT,FLOOR,COLUMNS)
 leftWall = Wall(LEFT-1, TOP, ROWS)
 rightWall = Wall(RIGHT, TOP, ROWS)
 obst = Obstacles(LEFT, BOTTOM-1)
-#FONT = pygame.font.SysFont("Ariel Black",30)
+counter = 0
+level = 0
+time = 0
+font = pygame.font.SysFont("Ariel Black", 60) 
+swap = False
 
 #---------------------------------------#
 
@@ -49,28 +51,37 @@ def drawGrid():
     for x in range(LEFT*25,RIGHT*25,GRIDSIZE):
         pygame.draw.line(screen,WHITE, (x,0),(x,0),1)
 '''
-def redrawScreen():               
+def redrawScreen():
     screen.fill(BLACK)
     tetra.draw(screen, GRIDSIZE)
+    shadow.row = 0
+    while not(shadow.collides(bottom) or shadow.collides(obst)):
+        shadow.moveDown()
+    shadow.moveUp()
+    if shadow.row > tetra.row:
+        shadow.draw(screen, GRIDSIZE)
     for ob in obst.blocks:
         ob.draw(screen, GRIDSIZE)
     floor.draw(screen, GRIDSIZE)
     leftWall.draw(screen, GRIDSIZE)
     rightWall.draw(screen, GRIDSIZE)
-#####################################################################################################
-# 11.  Draw the object obstacles on the screen
-#####################################################################################################
     nextShape.draw(screen, GRIDSIZE)
+    holdShape.draw(screen, GRIDSIZE)
     pygame.display.update() 
     
-
+def findBottom(col: int):
+    bot = 0
+    for ob in obst.blocks:
+        if ob.col == col and bot<ob.row:
+            bot = ob.row
+    if bot == 0:
+        return 22
+    return bot
+        
 #---------------------------------------#
 #   main program                    #
 #---------------------------------------#    
 
-#####################################################################################################
-# 10.  Create an object obstacles of Obstacles class. Give it two parameters only - LEFT & FLOOR
-#####################################################################################################
 inPlay = True                                         
 
 while inPlay:               
@@ -78,64 +89,71 @@ while inPlay:
         if event.type == pygame.QUIT:         
             inPlay = False
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-#####################################################################################################
-# 7.  Modify the code below, so it calls rotateClkwise() method and it doesn't access _rot private variable
-#     and the rotation method. Use the code below in the class template to write the new rotation methods
-#####################################################################################################                     
+            
+            
+                
+                    
+            if event.key == pygame.K_UP:            
                 tetra.rotateClkwise()
-                if tetra.collides(leftWall) or tetra.collides(rightWall) or tetra.collides(bottom):
+                shadow.rotateClkwise()
+                if tetra.collides(leftWall) or tetra.collides(rightWall) or tetra.collides(bottom) or tetra.collides(obst):
                     tetra.rotateCntclkwise()
-#####################################################################################################
-# 8.  Modify the code so it uses rotateCntclkwise() method when collision is detected during rotation
-#####################################################################################################
+                    shadow.rotateCntclkwise()
+
             if event.key == pygame.K_LEFT:
                 tetra.moveLeft()
+                shadow.moveLeft()
                 if tetra.collides(leftWall) or tetra.collides(obst):
                     tetra.moveRight()
+                    shadow.moveRight()
+                    
             if event.key == pygame.K_RIGHT:
                 tetra.moveRight()
+                shadow.moveRight()
+                
                 if tetra.collides(rightWall) or tetra.collides(obst):
                     tetra.moveLeft()
+                    shadow.moveLeft()
+            if event.key == pygame.K_c and not swap:
+                tetra, holdShape = Shape(MIDDLE-1,2,nextShapeNo), Shape(LEFT-6, 12, oldShape)
+                #holdShape = nextShapeNo
+                oldShape, nextShapeNo = nextShapeNo, oldShape
+                swap = True
+                
             if event.key == pygame.K_SPACE:
-                pass
-####################################################################################################
-# 12. Remove the space bar action that changes the shape.
-#     Replace the code above with code that drops 
-#     the shape until it hits the floor or obstacles.
-#     HINT: Use a while loop, and the conflict method to stop the movement.
-# 13. Remove the DOWN key check. Let the tetra move down freely
-#     dedent the command to allign with the for loop at the top.
-#     HINT: If the tetra moves very fast you can consider adding a timer: (if timer%5==0) use the clock command
-####################################################################################################
+                while not(tetra.collides(bottom) or tetra.collides(obst)):
+                    tetra.moveDown()
+                
+                
             if event.key == pygame.K_DOWN:
+                counter = 0
                 tetra.moveDown()
-                if tetra.collides(bottom) or tetra.collides(obst):
-                    tetra.moveUp()
-                    obst.append(tetra)
-                    obst.show()
-                    tetra = Shape(MIDDLE-1,2,nextShapeNo)
-                    nextShapeNo = randint(1,7)
-                    nextShape = Shape(LEFT-6, 3, nextShapeNo)
-                    
-                    
-#                   obstacles.show()    # print the blocks to visualize the process. Remove it afterwards
+    
+    if counter > 1000:
+        counter = 0
+        tetra.moveDown()
+        
+    if tetra.collides(bottom) or tetra.collides(obst):
+        tetra.moveUp()
+        obst.append(tetra)
+        obst.show()
+        tetra = Shape(MIDDLE-1,2,nextShapeNo)
+        shadow = Shape(MIDDLE-1,2, nextShapeNo)
+        oldShape = nextShapeNo
+        print(oldShape)
+        nextShapeNo = randint(1,7)
+        nextShape = Shape(LEFT-6, 3, nextShapeNo)
+        swap = False        
+        fullRows = obst.findFullRows(TOP, FLOOR, COLUMNS)    # finds the full rows and removes their blocks from the obstacles 
+        print ("full rows: ",fullRows)    # printing the full rows is done to visualize the process remove it afterwards
+        obst.removeFullRows(fullRows)
+        
+    counter += clock.get_time()* (1+(level/10)) #gets faster as by a 
+                
 
-##################################################################################
-# 14. Add the collisions between the shape and the obstacles in all if statements
-#     Once the shape is down, it has to become a part of the obstacle object
-#15. Use the append merhod to add the fallen tetra to the obstacle's object
-##################################################################################        
-                
-                    fullRows = obst.findFullRows(TOP, FLOOR, COLUMNS)    # finds the full rows and removes their blocks from the obstacles 
-                    print ("full rows: ",fullRows)    # printing the full rows is done to visualize the process remove it afterwards
-                    obst.removeFullRows(fullRows)
-                
-###################################################################################
-# 16. Generate a new shape in the middle of the screen. Uncomment the 3 lines above 
-###################################################################################
      
     redrawScreen()
+    clock.tick(10000)
     pygame.time.delay(30)
     
 pygame.quit()

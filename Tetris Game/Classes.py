@@ -1,9 +1,3 @@
-#########################################
-# Programmer: Mrs.G
-# Date: 07/05/2024
-# File Name: tetrisClasses3.py
-# Description: These classes are templates for writing a Tetris game.
-#########################################
 import pygame
 
 BLACK     = (  0,  0,  0)                       
@@ -17,7 +11,7 @@ YELLOW    = (255,255,  0)
 WHITE        = (255,255,255) 
 COLOURS  = [ BLACK,  RED,  GREEN,  BLUE,  ORANGE,  CYAN,  MAGENTA,  YELLOW,  WHITE ]
 CLRNames = ['black','red','green','blue','orange','cyan','magenta','yellow','white']
-figures        = [  None , 'Z' ,  'S'  ,  'J' ,  'L'   ,  'I' ,   'T'   ,   'O'  , None  ]
+figures        = [  None , 'Z' ,  'S'  ,  'J' ,  'L'   ,  'I' ,   'T'   ,   'O'  , None]
 COLUMNS = 10                            
 ROWS = 22                            
 LEFT = 9                                
@@ -58,9 +52,7 @@ class Block(object):
         
     def moveDown(self):                
         self.row = self.row + 1
-##############################################################################################
-# 1A. Delete the moveLeft, moveRight  in class Block since they are no longer used  
-##############################################################################################    
+
     def moveLeft(self):                
         self.col = self.col - 1
         
@@ -83,10 +75,6 @@ class Cluster(object):
         self._colOffsets = [0]*blocksNo  
         self._rowOffsets = [0]*blocksNo  
 
-##############################################################################################
-# 1B. Make the update method private and make sure all the calls are changed as well.  
-##############################################################################################
-
     def _update(self):
         for i in range(len(self.blocks)):
             blockCOL = self.col+self._colOffsets[i] 
@@ -102,9 +90,7 @@ class Cluster(object):
         """ Compare each block from a cluster to all blocks from another cluster.
             Return True only if there is a location conflict.
         """
-############################################################################################
-# 2. Complete the collides method that checks if one shape is colliding with the other.   
-############################################################################################  
+
         for i in self.blocks:
             for j in other.blocks:
                 if i == j:
@@ -114,17 +100,13 @@ class Cluster(object):
     def append(self, other): 
         """ Append all blocks from another cluster to this one.
         """
-###########################################################################################
-# 9.  Add code here that appends the blocks of the other object to the self.blocks list.
-#     Use a for loop to take each individual block from the other.blocks list 
-###########################################################################################
+
         for i in other.blocks:
             self.blocks.append(i)
             
 #---------------------------------------#
 class Obstacles(Cluster):
     """ Collection of tetrominoe blocks on the playing field, left from previous shapes.
-        
     """        
     def __init__(self, col = 0, row = 0, blocksNo = 0):
         Cluster.__init__(self, col, row, blocksNo)      # initially the playing field is empty(no shapes are left inside the field)
@@ -138,9 +120,9 @@ class Obstacles(Cluster):
         fullRows = []
         rows = []
         for block in self.blocks:                       
-           rows.append(block.row)    # make a list with only the row numbers of all blocks
+            rows.append(block.row)    # make a list with only the row numbers of all blocks
             
-        for row in range(top, lastRow):                  # starting from the top (row 0), and down to the bottom
+        for row in range(TOP, BOTTOM):                  # starting from the top (row 0), and down to the bottom
             if rows.count(row) >= columns:            # if the number of blocks with certain row number
                 fullRows.append(row)                      # equals to the number of columns -> the row is full
         return fullRows                                         # return a list with the full rows' numbers
@@ -166,10 +148,10 @@ class Shape(Cluster):
                 * figure/shape is defined by the colour
             rot - rotation             
     """
-    def __init__(self, col = 1, row = 1, clr = 1):
+
+    def __init__(self, col = 1, row = 1, clr = 1, shadow = False):
         Cluster.__init__(self, col, row, 4)
         self.clr = clr
-
         self._rot = 1
         self._colOffsets = [-1, 0, 0, 1] 
         self._rowOffsets = [-1,-1, 0, 0] 
@@ -217,7 +199,7 @@ class Shape(Cluster):
                              #   o                               o             o 
             _colOffsets = [[ 0,-1, 0, 0], [-1, 0, 0, 1], [ 0, 1, 0, 0], [ 1, 0, 0,-1]] 
             _rowOffsets = [[ 1, 0, 0,-1], [ 0,-1, 0, 0], [-1, 0, 0, 1], [ 0, 1, 0, 0]] 
-        elif self.clr == 7:  # 
+        else:                # 
                              # o o            o o               o o          o o
                              # o x            o x               o x          o x
                              # 
@@ -236,7 +218,7 @@ class Shape(Cluster):
         self._update() 
         
     def moveDown(self):                
-        self.row = self.row + 1                   
+        self.row = self.row + 1           
         self._update() 
         
     def moveUp(self):                  
@@ -246,17 +228,12 @@ class Shape(Cluster):
     def rotateClkwise(self):
         self._rot = (self._rot + 1)%4     
         self._rotate()
-#############################################################################################################
-# 5.  Add code here that rotates the shape one step clockwise. Use the rotation section from the previous template
-#############################################################################################################
 
     def rotateCntclkwise(self):
         self._rot = (self._rot - 1)%4     
         self._rotate()
-#############################################################################################################
-# 6.  Add code here that rotates the shape one step counterclockwise. Use the rotation section from the previous template
-#############################################################################################################
 
+    
 
 #---------------------------------------#
 class Floor(Cluster):
