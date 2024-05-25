@@ -1,9 +1,10 @@
 import pygame
-
+pygame.init()
 BLACK = (0, 0, 0)
 GRAY = (72, 72, 72)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
+DARKGREEN = (91,170,91)
 BLUE = (0, 0, 255)
 ORANGE = (255, 127, 0)
 CYAN = (0, 183, 235)
@@ -11,6 +12,11 @@ MAGENTA = (255, 0, 255)
 YELLOW = (255, 255, 0)
 WHITE = (255, 255, 255)
 COLOURS = [BLACK, RED, GREEN, BLUE, ORANGE, CYAN, MAGENTA, YELLOW, GRAY]
+colours = [
+    None,
+    "red1.bmp","green2.bmp", "blue3.bmp", "orange4.bmp",
+    "cyan5.bmp" , "magenta6.bmp", "yellow7.bmp", "shadow.jpeg"
+]
 CLRNames = [
     'black', 'red', 'green', 'blue', 'orange', 'cyan', 'magenta', 'yellow',
     'white'
@@ -19,12 +25,17 @@ figures = [None, 'Z', 'S', 'J', 'L', 'I', 'T', 'O', None]
 
 COLUMNS = 10
 ROWS = 22
-LEFT = 9
-TOP = 1
+LEFT = 20
+TOP = 7
 MIDDLE = LEFT + COLUMNS // 2
 RIGHT = LEFT + COLUMNS
 BOTTOM = TOP + ROWS
+GRIDSIZE = 17
+FLOOR = TOP + ROWS  #
 
+lineSound = pygame.mixer.Sound("clearline (2).wav")
+lineSound.set_volume(10)
+finishedLine = False
 class Block(object):
     """ A square - basic building block
         data:               behaviour:
@@ -38,6 +49,12 @@ class Block(object):
         self.row = row
         self.clr = clr
         self.shadow = shadow
+        self.image = pygame.image.load(colours[self.clr])
+        if self.shadow:
+            self.image = pygame.image.load(colours[-1])
+        self.image = pygame.transform.scale(self.image,(GRIDSIZE,GRIDSIZE))
+
+        
 
     def __str__(self):
         return '(' + str(self.col) + ',' + str(
@@ -47,11 +64,9 @@ class Block(object):
         x = self.col * gridsize
         y = self.row * gridsize
 
-        CLR = COLOURS[-1] if self.shadow else COLOURS[self.clr]
-        
-        pygame.draw.rect(surface, CLR, (x, y, gridsize, gridsize), 0)
-        pygame.draw.rect(surface, WHITE, (x, y, gridsize + 1, gridsize + 1), 1)
-        
+
+        surface.blit(self.image, (x,y))
+  
     def __eq__(self, other):
         if self.col == other.col and self.row == other.row:
             return True
@@ -81,7 +96,7 @@ class Cluster(object):
     def __init__(self, col=1, row=1, blocksNo=1, shadow=False):
         self.col = col
         self.row = row
-        self.clr = 0
+        self.clr = -1
         self.shadow = shadow
         self.blocks = [Block(shadow = self.shadow)] * blocksNo
         self._colOffsets = [0] * blocksNo
@@ -106,10 +121,16 @@ class Cluster(object):
         return False
 
     def append(self, other):
+        """ Append all blocks from another cluster to this one.
+        """
         for i in other.blocks:
             self.blocks.append(i)
 
+
+#---------------------------------------#
 class Obstacles(Cluster):
+    """ Collection of tetrominoe blocks on the playing field, left from previous shapes.
+    """
 
     def __init__(self, col=0, row=0, blocksNo=0):
         Cluster.__init__(self, col, row, blocksNo)
@@ -125,22 +146,33 @@ class Obstacles(Cluster):
         for block in self.blocks:
             rows.append(block.row)
         for row in range(TOP, BOTTOM):
-            if rows.count(row) >= columns:
+            if rows.count(row) == columns:
+                print("Full rows:", row)
                 fullRows.append(row)
         return fullRows
 
     def removeFullRows(self, fullRows):
-
+        finishedLine = True
         for row in fullRows:
             for i in reversed(range(len(self.blocks))):
                 if self.blocks[i].row == row:
                     self.blocks.pop(i)
                 elif self.blocks[i].row < row:
                     self.blocks[i].moveDown()
+        
+        
 
 
 #---------------------------------------#
 class Shape(Cluster):
+    """ A tetrominoe in one of the shapes: Z,S,J,L,I,T,O; consists of 4 x Block() objects
+        data:               behaviour:
+            col - column        move left/right/up/down
+            row - row           draw
+            clr - colour        rotate
+                * figure/shape is defined by the colour
+            rot - rotation             
+    """
 
     def __init__(self, col=1, row=1, clr=1, shadow = False):
         self.shadow = shadow
@@ -156,7 +188,7 @@ class Shape(Cluster):
             self.row) + ') ' + CLRNames[self.clr]
 
     def _rotate(self):
-        
+        """ offsets are assigned starting from the farthest (most distant) block in reference to the anchor block """
         if self.clr == 1:  #           (default rotation)
             #   o             o o                o
             # o x               x o            x o          o x
@@ -241,8 +273,11 @@ class Shape(Cluster):
         self._rot = (self._rot - 1) % 4
         self._rotate()
 
-
-
+    def findBottom(self, obst, bottom):
+        while not (self.collides(bottom) or self.collides(obst)):
+            self.moveDown()
+        self.moveUp()
+        return self.row
 
 class Floor(Cluster):
     """ Horizontal line of blocks
@@ -257,7 +292,6 @@ class Floor(Cluster):
         for i in range(blocksNo):
             self._colOffsets[i] = i
         self._update()
-
 
 class Wall(Cluster):
     """ Vertical line of blocks
