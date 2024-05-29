@@ -5,104 +5,94 @@ import pygame
 pygame.init()
 clock = pygame.time.Clock()
 HEIGHT = 600
+HALFHEIGHT = 300
 WIDTH = 600
+HALFWIDTH = 300
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 GREY = (192, 192, 192)
+PAUSEBLACK = (0,0,0,50)
 
-shapeNo = randint(1, 7)
-tetra = Shape(MIDDLE - 1, TOP, shapeNo)
-shadow = Shape(MIDDLE - 1, TOP, shapeNo, shadow=True)
-nextShapeNo = randint(1, 7)
-nextShape = Shape(LEFT - 16, TOP+5, nextShapeNo)
-oldShape = shapeNo
-holdShapeNo = 0
-holdShape = Shape(LEFT - 16, TOP+12, 8)
+#---------------------------------------#
 
-bottom = Floor(LEFT, BOTTOM, COLUMNS)
-leftWall = Wall(LEFT - 1, TOP, ROWS)
-rightWall = Wall(RIGHT, TOP, ROWS)
-obst = Obstacles(LEFT, BOTTOM - 1)
-
-counter = 0
-level = 1
-time = 0
-font = pygame.font.SysFont("Ariel Black",40)
-font2 = pygame.font.SysFont("Ariel Black",24)
-font3 = pygame.font.SysFont("Ariel Black",30)
-swap = False
-stored = False
-points = 0
-tetris = False
-recentPoints = 0
-starting = False
-soundVolume = 0.4
-
-pygame.mixer.music.load("Ruins.wav")
-pygame.mixer.music.set_volume(0.2)
-pygame.mixer.music.play(loops = -1)
-levelSound = pygame.mixer.Sound("clear_level.wav")
-levelSound.set_volume(soundVolume)
-rotSound = pygame.mixer.Sound("block-rotate.wav")
-rotSound.set_volume(soundVolume)
-lineSound = pygame.mixer.Sound("clearline (2).wav")
-lineSound.set_volume(0.7)
-dropSound = pygame.mixer.Sound("land.wav")
-dropSound.set_volume(soundVolume)
-overSound = pygame.mixer.Sound("gameover.wav")
-overSound.set_volume(soundVolume)
-#add swap sound
-
-bgImage = pygame.image.load("dswallpaper(4).jpeg")
-bg = pygame.transform.scale(bgImage,(WIDTH,HEIGHT))
+game = game()
 
 #---------------------------------------#
 #   functions                           #
 #---------------------------------------#
-def start():
-    '''
-    () -> None
-    This function displays the introduction screen
-    '''
-    screen.fill (BLACK)
-    playAgain = font.render("Play", 1, BLACK)
-    pygame.draw.rect(screen, GREEN, (WIDTH//2-250, HEIGHT//2,WIDTH//2+10, 100))
-    screen.blit(playAgain, (WIDTH//2-125, HEIGHT//2+30))
-    pygame.display.update()
-
 def gameOver():
     '''
     () -> None
-    This function displays the game over screen
+    This function displays the gameover screen.
     '''
-    screen.fill (BLACK)
-    playAgain = font.render("Play Again", 1, BLACK)
-    pygame.draw.rect(screen, GREEN, (WIDTH//2-250, HEIGHT//2,WIDTH//2+10, 100))
-    screen.blit(playAgain, (WIDTH//2-125, HEIGHT//2+30))
+    screen.blit(game.introBg,(0,0))
+    gameOverText = game.fonts["Big"].render("You Lost!",1,RED)
+    screen.blit(gameOverText,(HALFWIDTH-85, HALFHEIGHT+30))
+    pygame.draw.rect(screen, GREEN, (HALFWIDTH+20, HALFHEIGHT+180,HALFWIDTH-50, 100))
+    playAgain = game.fonts["Big"].render("Play Again", 1, BLACK)
+    screen.blit(playAgain, (HALFWIDTH+70, HALFHEIGHT+215))
+    pygame.display.update()
+    
+def start():
+    '''
+    () -> None
+    This function displays the introduction screen with a start button
+    '''
+    screen.blit(game.introBg,(0,0))
+    pygame.draw.rect(screen, GREEN, (HALFWIDTH+20, HALFHEIGHT+180,HALFWIDTH-50, 100))
+    playAgain = game.fonts["Big"].render("Play", 1, BLACK)
+    screen.blit(playAgain, (HALFWIDTH+110, HALFHEIGHT+215))
     pygame.display.update()
 
-def redrawScreen():
-    if starting:
-        screen.blit(bg,(0,0))
-        shadow.row = 0
-        shadow.row = shadow.findBottom(obst, bottom)
-        pointstext=font.render("Points: " + str(points),1,DARKGREEN)
-        screen.blit(pointstext,(15,(TOP-1)*GRIDSIZE))
-        rptext = font2.render("Level: " + str(level),1,DARKGREEN)
-        screen.blit(rptext,(15,(TOP+1)*GRIDSIZE))
-        if shadow.row > tetra.row:
-            shadow.draw(screen, GRIDSIZE)
-        tetra.draw(screen, GRIDSIZE)
-        for ob in obst.blocks:
-            ob.draw(screen, GRIDSIZE)
-        nextShape.draw(screen, GRIDSIZE)
-        holdShape.draw(screen, GRIDSIZE)
-        bottom.draw(screen, GRIDSIZE)
-        leftWall.draw(screen, GRIDSIZE)
-        rightWall.draw(screen, GRIDSIZE)
-    else:
-        start()
+def pauseScreen():
+    '''
+    () -> None
+    This function displays the pause screen
+    '''
+    pygame.draw.rect(screen, BLACK, (HALFWIDTH-100, HALFHEIGHT,HALFWIDTH-100, 100))
+    playAgain = game.fonts["Big"].render("PAUSED", 1, GREEN)
+    screen.blit(playAgain, (HALFWIDTH-55, HALFHEIGHT+30))
+    pygame.display.update()
     
-
+def redrawScreen():
+    '''
+    This function updates the screen, drawing according to the game state
+    '''
+    if not game.starting: #if game not running either: start game or game is over
+        if game.gameLost:
+            gameOver()
+        else: 
+            start()
+    else: #if game is running
+        screen.blit(game.bg,(0,0))
+        game.shadow.row = 0
+        game.shadow.row = game.shadow.findBottom(game.obst, game.bottom)
+        time = game.fonts["Medium2"].render("Time: " + str(int(divmod(game.time//1000,60)[0]))+":"+str(int(divmod(game.time//1000,60)[1])), 1, DARKGREEN) #spliting time into minutes:second
+        
+        screen.blit(time,(35,((TOP-3)*GRIDSIZE)+5))
+        pointstext=game.fonts["Medium2"].render("Points: " + str(game.points),1,DARKGREEN)
+        screen.blit(pointstext,(35,(TOP-1)*GRIDSIZE))
+        leveltext = game.fonts["Small"].render("Level: " + str(game.level),1,DARKGREEN)
+        screen.blit(leveltext,(35,(TOP+1)*GRIDSIZE))
+        nextShapetext = game.fonts["Small"].render("Next Shape: ",1,DARKGREEN)
+        screen.blit(nextShapetext,(35,213))
+        holdShapetext = game.fonts["Small"].render("Hold: ",1,DARKGREEN)
+        screen.blit(holdShapetext,(35,295))
+        if game.shadow.row > game.tetra.row:
+            game.shadow.draw(screen, GRIDSIZE)
+        if not (game.tetra.collides(game.obst) and game.tetra.row <= 8):
+            game.tetra.draw(screen, GRIDSIZE)
+        for ob in game.obst.blocks:
+            ob.draw(screen, GRIDSIZE)
+        game.nextShape.draw(screen, GRIDSIZE)
+        game.holdShape.draw(screen, GRIDSIZE)
+        game.bottom.draw(screen, GRIDSIZE)
+        game.top.draw(screen, GRIDSIZE)
+        game.leftWall.draw(screen, GRIDSIZE)
+        game.rightWall.draw(screen, GRIDSIZE)
+        screen.blit(game.pauseImg, (0,(TOP-3)*GRIDSIZE))
+        if game.pause: #if game is paused
+            pauseScreen()
+    
     pygame.display.update()
 
 
@@ -116,102 +106,122 @@ while inPlay:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             inPlay = False
-        if event.type == pygame.MOUSEBUTTONDOWN and not starting:
+        if event.type == pygame.MOUSEBUTTONDOWN and not game.starting: #the starting play button
             cursorX, cursorY = pygame.mouse.get_pos()
-            if WIDTH//2-250<=cursorX<= WIDTH//2+210 and HEIGHT//2<=cursorY<=HEIGHT//2+100:
-                starting = True
-
-        if starting and event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-                tetra.rotateClkwise()
-                shadow.rotateClkwise()
-                rotSound.play()
-                if tetra.collides(leftWall) or tetra.collides(
-                        rightWall) or tetra.collides(bottom) or tetra.collides(
-                            obst):
-                    tetra.rotateCntclkwise()
-                    shadow.rotateCntclkwise()
+            if HALFWIDTH+20<=cursorX<= (HALFWIDTH+20+HALFWIDTH-50) and HALFHEIGHT+180<=cursorY<=(HALFHEIGHT+180+100): #this is the location of the button
+                game.reset()
+                game.starting = True
+                
+        if event.type == pygame.MOUSEBUTTONDOWN and not game.pause: #pause button
+            cursorX, cursorY = pygame.mouse.get_pos()
+            if (TOP-3)*GRIDSIZE<=cursorY<=((TOP-3)*GRIDSIZE+ GRIDSIZE+15) and 0<=cursorX<=GRIDSIZE+15: #location of the pause button
+                game.pause = True
+                
+        elif event.type == pygame.MOUSEBUTTONDOWN and game.pause:
+            cursorX, cursorY = pygame.mouse.get_pos()
+            if (TOP-3)*GRIDSIZE<=cursorY<=((TOP-3)*GRIDSIZE+ GRIDSIZE+15) and 0<=cursorX<=GRIDSIZE+15:
+                game.pause = False     
+            
+        if game.starting and event.type == pygame.KEYDOWN and not game.pause:
+            if event.key == pygame.K_UP: #rotate shadow and tetra
+                game.tetra.rotateClkwise()
+                game.shadow.rotateClkwise()
+                game.rotSound.play()
+                if game.tetra.collides(game.leftWall) or game.tetra.collides(
+                        game.rightWall) or game.tetra.collides(game.bottom) or game.tetra.collides(game.obst):
+                    game.tetra.rotateCntclkwise()
+                    game.shadow.rotateCntclkwise()
                     
-            if event.key == pygame.K_LEFT:
-                tetra.moveLeft()
-                shadow.moveLeft()
-                if tetra.collides(leftWall) or tetra.collides(obst):
-                    tetra.moveRight()
-                    shadow.moveRight()
+            if event.key == pygame.K_LEFT: #move tetra and shadow left
+                game.tetra.moveLeft()
+                game.shadow.moveLeft()
+                if game.tetra.collides(game.leftWall) or game.tetra.collides(game.obst):
+                    game.tetra.moveRight()
+                    game.shadow.moveRight()
 
-            if event.key == pygame.K_RIGHT:
-                tetra.moveRight()
-                shadow.moveRight()
+            if event.key == pygame.K_RIGHT: #move tetra and shadow right
+                game.tetra.moveRight()
+                game.shadow.moveRight()
 
-                if tetra.collides(rightWall) or tetra.collides(obst):
-                    tetra.moveLeft()
-                    shadow.moveLeft()
-            if event.key == pygame.K_c and not swap:
-                if not stored:
-                    tetra, shadow, holdShape = Shape(MIDDLE - 1, TOP, nextShapeNo), Shape(MIDDLE - 1, TOP, nextShapeNo,shadow=True), Shape(LEFT - 16, TOP+12,oldShape)
-                    oldShape, nextShapeNo = nextShapeNo, oldShape
-                    holdShapeNo = nextShapeNo
-                    swap = True
-                    stored = True
+                if game.tetra.collides(game.rightWall) or game.tetra.collides(game.obst):
+                    game.tetra.moveLeft()
+                    game.shadow.moveLeft()
+            if event.key == pygame.K_c and not game.swap: #Place current tetra on hold and generate new tetra
+                game.swapSound.play()
+                if not game.stored: #shows blank square if not stored
+                    game.tetra, game.shadow, game.holdShape = Shape(MIDDLE - 1, TOP, game.nextShapeNo), Shape(MIDDLE - 1, TOP, game.nextShapeNo,shadow=True), Shape(LEFT - 16, TOP+12,game.oldShape)
+                    game.oldShape, game.nextShapeNo = game.nextShapeNo, game.oldShape
+                    game.holdShapeNo = game.nextShapeNo
+                    game.nextShapeNo = randint(1, 7)
+                    game.nextShape = Shape(LEFT - 16, TOP+7, game.nextShapeNo)
+                    game.swap = True
+                    game.stored = True
                 else:
-                    tetra, shadow, holdShape = Shape(
-                        MIDDLE - 1, TOP, holdShapeNo), Shape(MIDDLE - 1, TOP, holdShapeNo, shadow=True), Shape(LEFT - 16, TOP+12,oldShape)
-                    oldShape, holdShapeNo = holdShapeNo, oldShape
-                    swap = True
-            if event.key == pygame.K_SPACE:
-                dropSound.play()
-                while not (tetra.collides(bottom) or tetra.collides(obst)):
-                    tetra.moveDown()
-                counter = 0
+                    game.tetra, game.shadow, game.holdShape = Shape(MIDDLE - 1, TOP, game.holdShapeNo), Shape(MIDDLE - 1, TOP, game.holdShapeNo, shadow=True), Shape(LEFT - 16, TOP+12,game.oldShape)
+                    game.oldShape, game.holdShapeNo = game.holdShapeNo, game.oldShape
+                    game.swap = True
+                    game.nextShapeNo = randint(1, 7)
+                    game.nextShape = Shape(LEFT - 16, TOP+7, game.nextShapeNo)
+            if event.key == pygame.K_SPACE: #move tetra to the bottom
+                game.dropSound.play()
+                while not (game.tetra.collides(game.bottom) or game.tetra.collides(game.obst)):
+                    game.tetra.moveDown()
+                game.counter = 0
 
-            if event.key == pygame.K_DOWN:
-                tetra.moveDown()
-    if starting:
-        if counter > 1000:
-            counter = 0
-            tetra.moveDown()
+            if event.key == pygame.K_DOWN: #move tetra down
+                game.tetra.moveDown()
+    if game.starting and not game.pause:
+        if game.counter > 1000: #move tetra down at an according speed based on level (logic below)
+            game.counter = 0
+            game.tetra.moveDown()
     
-        if tetra.collides(bottom) or tetra.collides(obst):
-            print("level:", level)
-            print("points:", points)
-            for block in tetra.blocks:
-                print(block.row)
-                if block.row <= 8:
-                    starting = False
+        if game.tetra.collides(game.bottom) or game.tetra.collides(game.obst):
+            for block in game.tetra.blocks:
+                if block.row <= 8: #if the blocks are at the top of the screen the game ends
+                    game.starting = False
+                    game.gameLost = True
             if inPlay:
-                tetra.moveUp()
-                obst.append(tetra)
-                #obst.show()
-                tetra = Shape(MIDDLE - 1, TOP, nextShapeNo)
-                shadow = Shape(MIDDLE - 1, TOP, nextShapeNo, shadow=True)
-                oldShape = nextShapeNo
-                nextShapeNo = randint(1, 7)
-                nextShape = Shape(LEFT - 16, TOP+5, nextShapeNo)
-                swap = False
+                game.tetra.moveUp() #move tetra out of obstacle
+
+                #adding tetra to obst and making new tetra
+                game.obst.append(game.tetra)
+                game.tetra = Shape(MIDDLE - 1, TOP, game.nextShapeNo)
+                game.shadow = Shape(MIDDLE - 1, TOP, game.nextShapeNo, shadow=True)
+                game.oldShape = game.nextShapeNo
+                game.nextShapeNo = randint(1, 7)
+                game.nextShape = Shape(LEFT - 16, TOP+7, game.nextShapeNo)
+                game.swap = False
     
-            fullRows = obst.findFullRows(TOP, FLOOR, COLUMNS) 
+            fullRows = game.obst.findFullRows(TOP, FLOOR, COLUMNS)
+
+            #points system
             if 0<len(fullRows)<4:
-                points += len(fullRows)*100
-                recentPoints = len(fullRows)*100
-                lineSound.play()
+                game.points += len(fullRows)*100
+                game.recentPoints = len(fullRows)*100
+                game.lineSound.play()
             elif len(fullRows) == 4:
-                if recentPoints == 800:
-                    points += 1300
-                    recentPoints = 1300
-                    lineSound.play()
+                if game.recentPoints == 800:
+                    game.points += 1300
+                    game.recentPoints = 1300
+                    game.tetrisSound.play()
                 else:
-                    points += len(fullRows)*200
-                    recentPoints = len(fullRows)*200
-                    lineSound.play()
-               
-            obst.removeFullRows(fullRows)
-            print(recentPoints)
+                    game.points += len(fullRows)*200
+                    game.recentPoints = len(fullRows)*200
+                    game.tetrisSound.play()
+
+            #removing full rows
+            game.obst.removeFullRows(fullRows)
+    
+        #game level system
+        game.level = divmod(game.points, 500)[0] + 1
+
+        #tetris speed logic (up by tenth of second every level)
+        game.counter += clock.get_time() * (1 + (game.level / 10))  
+
+        #time system
+        game.time += clock.get_time()
     
         
-        level = divmod(points, 500)[0] + 1
-            
-        counter += clock.get_time() * (1 + (level / 10))  
-    
         
     clock.tick(10000)
     pygame.time.delay(30)

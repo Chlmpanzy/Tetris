@@ -1,4 +1,5 @@
 import pygame
+from random import randint
 pygame.init()
 BLACK = (0, 0, 0)
 GRAY = (72, 72, 72)
@@ -17,6 +18,10 @@ colours = [
     "red1.bmp","green2.bmp", "blue3.bmp", "orange4.bmp",
     "cyan5.bmp" , "magenta6.bmp", "yellow7.bmp", "shadow.jpeg"
 ]
+HEIGHT = 600
+HALFHEIGHT = 300
+WIDTH = 600
+HALFWIDTH = 300
 CLRNames = [
     'black', 'red', 'green', 'blue', 'orange', 'cyan', 'magenta', 'yellow',
     'white'
@@ -24,18 +29,19 @@ CLRNames = [
 figures = [None, 'Z', 'S', 'J', 'L', 'I', 'T', 'O', None]
 
 COLUMNS = 10
-ROWS = 22
-LEFT = 20
-TOP = 7
+ROWS = 24
+LEFT = 21
+TOP = 9
 MIDDLE = LEFT + COLUMNS // 2
 RIGHT = LEFT + COLUMNS
 BOTTOM = TOP + ROWS
-GRIDSIZE = 17
+GRIDSIZE = 16
 FLOOR = TOP + ROWS  #
 
 lineSound = pygame.mixer.Sound("clearline (2).wav")
 lineSound.set_volume(10)
 finishedLine = False
+
 class Block(object):
     """ A square - basic building block
         data:               behaviour:
@@ -51,7 +57,7 @@ class Block(object):
         self.shadow = shadow
         self.image = pygame.image.load(colours[self.clr])
         if self.shadow:
-            self.image = pygame.image.load(colours[-1])
+            self.image = pygame.image.load(colours[-1]) #if it's a shadow, update colour/image
         self.image = pygame.transform.scale(self.image,(GRIDSIZE,GRIDSIZE))
 
         
@@ -61,6 +67,10 @@ class Block(object):
             self.row) + ') ' + CLRNames[self.clr]
 
     def draw(self, surface, gridsize=20):
+        '''
+        (Block, surface, int) -> None
+        Function draws blocks on given surface
+        '''
         x = self.col * gridsize
         y = self.row * gridsize
 
@@ -68,23 +78,44 @@ class Block(object):
         surface.blit(self.image, (x,y))
   
     def __eq__(self, other):
+        '''
+        (Block, Block) -> bool
+        return wether blocks are equal
+        '''
         if self.col == other.col and self.row == other.row:
             return True
         return False
 
     def moveUp(self):
+        '''
+        (Block) -> None
+        Function moves block up
+        '''
         self.row = self.row - 1
 
     def moveDown(self):
+        '''
+        (Block) -> None
+        Function moves block down
+        '''
         self.row = self.row + 1
 
     def moveLeft(self):
+        '''
+        (Block) -> None
+        Function moves block left
+        '''
         self.col = self.col - 1
 
     def moveRight(self):
+        '''
+        (Block) -> None
+        Function moves block right
+        '''
         self.col = self.col + 1
 
 
+#---------------------------------------#
 class Cluster(object):
     """ Collection of blocks
         data:
@@ -114,6 +145,10 @@ class Cluster(object):
             block.draw(surface, gridsize)
 
     def collides(self, other):
+        '''
+        (Cluster, Cluster) -> bool
+        Return wether clusters collide
+        '''
         for i in self.blocks:
             for j in other.blocks:
                 if i == j:
@@ -121,7 +156,9 @@ class Cluster(object):
         return False
 
     def append(self, other):
-        """ Append all blocks from another cluster to this one.
+        """ 
+        (Cluster, Cluster) -> None
+        Append all blocks from another cluster to this one.
         """
         for i in other.blocks:
             self.blocks.append(i)
@@ -130,6 +167,7 @@ class Cluster(object):
 #---------------------------------------#
 class Obstacles(Cluster):
     """ Collection of tetrominoe blocks on the playing field, left from previous shapes.
+        
     """
 
     def __init__(self, col=0, row=0, blocksNo=0):
@@ -141,18 +179,24 @@ class Obstacles(Cluster):
             print(block)
 
     def findFullRows(self, top, lastRow, columns):
+        '''
+        (Obstacles, int, int, int) -> list
+        Function returns all rows that are full
+        '''
         fullRows = []
         rows = []
         for block in self.blocks:
             rows.append(block.row)
         for row in range(TOP, BOTTOM):
             if rows.count(row) == columns:
-                print("Full rows:", row)
                 fullRows.append(row)
         return fullRows
 
     def removeFullRows(self, fullRows):
-        finishedLine = True
+        '''
+        (Obstacles, list) -> None
+        Funciton removes full rows from the obstacles
+        '''
         for row in fullRows:
             for i in reversed(range(len(self.blocks))):
                 if self.blocks[i].row == row:
@@ -188,7 +232,9 @@ class Shape(Cluster):
             self.row) + ') ' + CLRNames[self.clr]
 
     def _rotate(self):
-        """ offsets are assigned starting from the farthest (most distant) block in reference to the anchor block """
+        '''
+        (Shape) -> None
+        offsets are assigned starting from the farthest (most distant) block in reference to the anchor block, function rotates the shape '''
         if self.clr == 1:  #           (default rotation)
             #   o             o o                o
             # o x               x o            x o          o x
@@ -250,30 +296,58 @@ class Shape(Cluster):
         self._update()
 
     def moveLeft(self):
+        '''
+        (Shape) -> None
+        Function moves Shape left
+        '''
         self.col = self.col - 1
         self._update()
 
     def moveRight(self):
+        '''
+        (Shape) -> None
+        Function moves Shape right
+        '''
         self.col = self.col + 1
         self._update()
 
     def moveDown(self):
+        '''
+        (Shape) -> None
+        Function moves Shape down
+        '''
         self.row = self.row + 1
         self._update()
 
     def moveUp(self):
+        '''
+        (Shape) -> None
+        Function moves Shape up
+        '''
         self.row = self.row - 1
         self._update()
 
     def rotateClkwise(self):
+        '''
+        (Shape) -> None
+        Function rotates Shape clockwise
+        '''
         self._rot = (self._rot + 1) % 4
         self._rotate()
 
     def rotateCntclkwise(self):
+        '''
+        (Shape) -> None
+        Function roates Shape counterclockwise
+        '''
         self._rot = (self._rot - 1) % 4
         self._rotate()
 
     def findBottom(self, obst, bottom):
+        '''
+        (Shape, Obstacle, Floor) -> int
+        Function find the last row where the shape can be placed
+        '''
         while not (self.collides(bottom) or self.collides(obst)):
             self.moveDown()
         self.moveUp()
@@ -306,4 +380,72 @@ class Wall(Cluster):
         for i in range(blocksNo):
             self._rowOffsets[i] = i
         self._update()
-    
+        
+
+class game(): #holds all varibales and allows for them to be easily reset when hitting "play again"
+    def __init__(self):
+        self.shapeNo = self.oldShape = randint(1, 7)
+        self.tetra = Shape(MIDDLE - 1, TOP, self.shapeNo)
+        self.shadow = Shape(MIDDLE - 1, TOP, self.shapeNo, shadow=True)
+        self.obst = Obstacles(LEFT, BOTTOM - 1)
+        self.nextShapeNo = randint(1, 7)
+        self.nextShape = Shape(LEFT-16, TOP+7, self.nextShapeNo)
+        self.holdShapeNo = self.points = self.recentPoints = 0
+        self.holdShape = Shape(LEFT - 16, TOP+12, 8)
+        self.counter = self.time = 0.0
+        self.level = 1
+        self.swap = self.stored = self.starting = self.pause = self.gameLost = False
+        
+        self.bottom = Floor(LEFT, BOTTOM-3, COLUMNS)
+        self.leftWall = Wall(LEFT - 1, TOP-2, ROWS)
+        self.rightWall = Wall(RIGHT, TOP-2, ROWS)
+        self.top = Floor(LEFT, TOP-2, COLUMNS)
+        
+        self.bgImage = pygame.image.load("dswallpaper(4).jpeg")
+        self.bg = pygame.transform.scale(self.bgImage,(WIDTH,HEIGHT))
+        self.introBgImage = pygame.image.load("dsintro.jpeg")
+        self.introBg = pygame.transform.scale(self.introBgImage,(WIDTH,HEIGHT))
+        self.pauseImg = pygame.image.load("pausebutton.png")
+        self.pauseImg = pygame.transform.scale(self.pauseImg,(GRIDSIZE+15,GRIDSIZE+15))
+
+        self.soundVolume = 0.4
+        pygame.mixer.music.load("dsMiiMaker.wav")
+        pygame.mixer.music.set_volume(0.08)
+        pygame.mixer.music.play(loops = -1)
+        self.levelSound = pygame.mixer.Sound("clear_level.wav")
+        self.levelSound.set_volume(self.soundVolume)
+        self.rotSound = pygame.mixer.Sound("block-rotate.wav")
+        self.rotSound.set_volume(self.soundVolume)
+        self.lineSound = pygame.mixer.Sound("clearline (2).wav")
+        lineSound.set_volume(0.7)
+        self.dropSound = pygame.mixer.Sound("land.wav")
+        self.dropSound.set_volume(self.soundVolume)
+        self.overSound = pygame.mixer.Sound("gameover.wav")
+        self.overSound.set_volume(self.soundVolume)
+        self.swapSound = pygame.mixer.Sound("swap.wav")
+        self.swapSound.set_volume(self.soundVolume)
+        self.tetrisSound = pygame.mixer.Sound("line.wav")
+        self.tetrisSound.set_volume(self.soundVolume)
+
+        #fonts
+        self.fonts = {"Big":pygame.font.SysFont("Ariel Black",40),
+                "Small":pygame.font.SysFont("Ariel Black",24),
+                "Medium":pygame.font.SysFont("Ariel Black",30),
+                "Medium2":pygame.font.SysFont("Ariel Black",33),
+                "Title":pygame.font.SysFont("Ariel Black",50)
+                     }
+    def reset(self):
+        '''
+        (game) -> None
+        Function resets the game
+        '''
+        self.shapeNo = self.oldShape = randint(1, 7)
+        self.tetra = Shape(MIDDLE - 1, TOP, self.shapeNo)
+        self.shadow = Shape(MIDDLE - 1, TOP, self.shapeNo, shadow=True)
+        self.obst.blocks.clear()
+        self.nextShapeNo = randint(1, 7)
+        self.nextShape = Shape(LEFT-16, TOP+7, self.nextShapeNo)
+        self.holdShapeN = self.points = self.recentPoints = 0
+        self.holdShape = Shape(LEFT - 16, TOP+12, 8)
+        self.counter = self.time = 0.0
+        self.swap = self.stored = self.starting = self.pause = self.gameLost = False
